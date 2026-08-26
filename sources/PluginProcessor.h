@@ -1,6 +1,9 @@
 #pragma once
 
 #include "juce_audio_processors/juce_audio_processors.h"
+#include "BinaryData.h"
+#include "juce_audio_basics/juce_audio_basics.h"
+#include "juce_audio_formats/juce_audio_formats.h"
 
 class SamplerAudioProcessor final : public juce::AudioProcessor
 {
@@ -33,5 +36,12 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void clearUnusedOutputChannels(juce::AudioBuffer<float>& buffer) const;
 
+    juce::SamplerSound* loadSound(const juce::String name, int originalMidiNote, const std::vector<int>& midiNoteSet, const void* data, size_t sizeInBytes);
+
+    juce::Synthesiser midiPlaybackEngine;
+    static constexpr auto numVoices = 8;
+
+    juce::AudioFormatManager formatManager;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SamplerAudioProcessor)
 };
