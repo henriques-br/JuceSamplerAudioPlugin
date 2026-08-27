@@ -171,6 +171,8 @@ set(SOURCE_FILES
 
     sources/PluginProcessor.h
     sources/PluginProcessor.cpp
+
+    sources/SamplerLookAndFeel.h
 )
 
 target_sources(${PROJECT_NAME}
@@ -214,14 +216,21 @@ juce_add_binary_data(BinaryData
 
     SOURCES
 
-        sounds/c5.wav
-        sounds/d5.wav
-        sounds/e5.wav
-        sounds/f5.wav
-        sounds/g5.wav
-        sounds/a5.wav
-        sounds/b5.wav
-        sounds/c6.wav
+        assets/sounds/c5.wav
+        assets/sounds/d5.wav
+        assets/sounds/e5.wav
+        assets/sounds/f5.wav
+        assets/sounds/g5.wav
+        assets/sounds/a5.wav
+        assets/sounds/b5.wav
+        assets/sounds/c6.wav
+
+        assets/images/BG_1376x1032_1.png
+        assets/images/Knob_152x132_129.png
+
+        assets/fonts/Inter-Medium.ttf
+        assets/fonts/Inter-Regular.ttf
+        assets/fonts/Inter-Semibold.ttf
 )
 
 

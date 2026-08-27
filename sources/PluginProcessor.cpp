@@ -37,6 +37,7 @@ void SamplerAudioProcessor::prepareToPlay(double newSampleRate, int maximumBlock
     midiPlaybackEngine.setCurrentPlaybackSampleRate(newSampleRate);
 
     reverb.setSampleRate(newSampleRate);
+    reverb.reset();
 
     oldDecay = -1.0f;
     oldReverbAmount = -1.0f;
@@ -83,8 +84,8 @@ void SamplerAudioProcessor::setStateInformation(const void* data, int sizeInByte
 
 juce::AudioProcessorEditor* SamplerAudioProcessor::createEditor()
 {
-//    return new SamplerAudioProcessorEditor(*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new SamplerAudioProcessorEditor(*this);
+//    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout SamplerAudioProcessor::createParameterLayout()
@@ -116,11 +117,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout SamplerAudioProcessor::creat
     );
 
     return layout;
-}
-
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
-{
-    return new SamplerAudioProcessor();
 }
 
 juce::SamplerSound* SamplerAudioProcessor::loadSound(const juce::String name,
@@ -186,20 +182,28 @@ void SamplerAudioProcessor::updateDecay()
 
 void SamplerAudioProcessor::updateReverb()
 {
-    auto reverbAmout = apvts.getRawParameterValue("reverb")->load();
+    auto reverbAmount = apvts.getRawParameterValue("reverb")->load();
 
-    if( !juce::approximatelyEqual(oldReverbAmount, reverbAmout))
+    if (! juce::approximatelyEqual(oldReverbAmount, reverbAmount))
     {
+        auto normalizedReverbAmount = juce::jlimit(0.0f, 1.0f, reverbAmount * 0.01f);
+
         juce::Reverb::Parameters params;
-        params.roomSize = reverbAmout * 0.1f;
+        params.roomSize = 0.2f + (0.8f * normalizedReverbAmount);
         params.damping = 0.5f;
-        params.wetLevel = 0.33f;
-        params.dryLevel = 0.4f;
+        params.wetLevel = 0.33f * normalizedReverbAmount;
+        params.dryLevel = 0.5f - (0.1f * normalizedReverbAmount);
         params.width = 1.0f;
         params.freezeMode = 0.0f;
 
         reverb.setParameters(params);
 
-        oldReverbAmount = reverbAmout;
+        oldReverbAmount = reverbAmount;
     }
 }
+
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new SamplerAudioProcessor();
+}
+

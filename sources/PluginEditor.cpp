@@ -5,7 +5,7 @@ SamplerAudioProcessorEditor::SamplerAudioProcessorEditor(SamplerAudioProcessor& 
     audioProcessor(p)
 {
     setOpaque(true);
-    setSize(400, 300);
+    setSize(windowWidth, windowHeight);
 }
 
 SamplerAudioProcessorEditor::~SamplerAudioProcessorEditor()
@@ -14,7 +14,8 @@ SamplerAudioProcessorEditor::~SamplerAudioProcessorEditor()
 
 void SamplerAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colours::darkgrey);
+//    g.fillAll(juce::Colours::darkgrey);
+    g.drawImage(Images::getBackground(), { 0, 0, windowWidth, windowHeight });
 }
 
 void SamplerAudioProcessorEditor::resized()
