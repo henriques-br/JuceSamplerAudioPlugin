@@ -35,15 +35,29 @@ void SamplerAudioProcessor::prepareToPlay(double newSampleRate, int maximumBlock
     juce::ignoreUnused(newSampleRate, maximumBlockSize);
 
     midiPlaybackEngine.setCurrentPlaybackSampleRate(newSampleRate);
+
+    reverb.setSampleRate(newSampleRate);
+
+    oldDecay = -1.0f;
+    oldReverbAmount = -1.0f;
 }
 
 void SamplerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-//    juce::ignoreUnused(midiMessages);
+    //    juce::ignoreUnused(midiMessages);
     juce::ScopedNoDenormals noDenormals;
     clearUnusedOutputChannels(buffer);
 
+    updateDecay();
+
+    updateReverb();
+
     midiPlaybackEngine.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+
+    reverb
+        .processStereo(buffer.getWritePointer(0),
+                       buffer.getWritePointer(1),
+                       buffer.getNumSamples());
 }
 
 void SamplerAudioProcessor::clearUnusedOutputChannels(juce::AudioBuffer<float>& buffer) const
@@ -69,12 +83,38 @@ void SamplerAudioProcessor::setStateInformation(const void* data, int sizeInByte
 
 juce::AudioProcessorEditor* SamplerAudioProcessor::createEditor()
 {
-    return new SamplerAudioProcessorEditor(*this);
+//    return new SamplerAudioProcessorEditor(*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout SamplerAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    auto valueToPercentageAsString = [](float value, int) { return juce::String(int(value)) + "%"; };
+
+    // Decay
+    layout.add(std::make_unique<juce::AudioParameterFloat>
+    (
+        juce::ParameterID{"decay", 1},
+         "Decay",
+         juce::NormalisableRange<float>(0.0f, 100.0f),
+         0.0f,
+         juce::AudioParameterFloatAttributes()
+         .withStringFromValueFunction(valueToPercentageAsString))
+    );
+
+    // Reverb
+    layout.add(std::make_unique<juce::AudioParameterFloat>
+    (
+        juce::ParameterID{"reverb", 1},
+         "Reverb",
+         juce::NormalisableRange<float>(0.0f, 100.0f),
+         0.0f,
+         juce::AudioParameterFloatAttributes()
+         .withStringFromValueFunction(valueToPercentageAsString))
+    );
+
     return layout;
 }
 
@@ -92,7 +132,9 @@ juce::SamplerSound* SamplerAudioProcessor::loadSound(const juce::String name,
     auto inputStream = std::make_unique<juce::MemoryInputStream>(data,
                                                                  sizeInBytes, false);
 
-    if (auto reader = formatManager.createReaderFor(std::move(inputStream)))
+    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(std::move(inputStream)));
+
+    if (reader != nullptr)
     {
         juce::BigInteger midiNotes;
 
@@ -116,3 +158,48 @@ juce::SamplerSound* SamplerAudioProcessor::loadSound(const juce::String name,
     return nullptr;
 }
 
+void SamplerAudioProcessor::updateDecay()
+{
+    auto decay = apvts.getRawParameterValue("decay")->load();
+
+    if ( !juce::approximatelyEqual(oldDecay, decay))
+    {
+        auto normalizedDecay = decay * 0.01f;
+
+        // Quadratic function
+        float skewValue = normalizedDecay * normalizedDecay;
+
+        // Make the real minimum a value of 0.05
+        float decayTime = 0.95f * skewValue + 0.05f;
+
+        for( int i = 0; i < midiPlaybackEngine.getNumSounds(); ++i )
+        {
+            if( auto* sound = dynamic_cast<juce::SamplerSound*>(midiPlaybackEngine.getSound(i).get()))
+            {
+                sound->setEnvelopeParameters({0.0f, decayTime, 0.1f, 0.05f});
+            }
+        }
+
+        oldDecay = decay;
+    }
+}
+
+void SamplerAudioProcessor::updateReverb()
+{
+    auto reverbAmout = apvts.getRawParameterValue("reverb")->load();
+
+    if( !juce::approximatelyEqual(oldReverbAmount, reverbAmout))
+    {
+        juce::Reverb::Parameters params;
+        params.roomSize = reverbAmout * 0.1f;
+        params.damping = 0.5f;
+        params.wetLevel = 0.33f;
+        params.dryLevel = 0.4f;
+        params.width = 1.0f;
+        params.freezeMode = 0.0f;
+
+        reverb.setParameters(params);
+
+        oldReverbAmount = reverbAmout;
+    }
+}

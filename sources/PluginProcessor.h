@@ -38,8 +38,17 @@ private:
 
     juce::SamplerSound* loadSound(const juce::String name, int originalMidiNote, const std::vector<int>& midiNoteSet, const void* data, size_t sizeInBytes);
 
+    void updateDecay();
+    void updateReverb();
+    
     juce::Synthesiser midiPlaybackEngine;
     static constexpr auto numVoices = 8;
+
+    float oldDecay = 0.0f;
+
+    juce::Reverb reverb;
+
+    float oldReverbAmount = 0.0f;
 
     juce::AudioFormatManager formatManager;
     
